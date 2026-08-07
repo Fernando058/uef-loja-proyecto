@@ -28,11 +28,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const loadProfile = useCallback(async (userId?: string) => {
-    if (!userId) {
-      setProfile(null)
-      return
-    }
+  const fetchProfile = useCallback(async (userId?: string) => {
+    if (!userId) return null
 
     const { data, error } = await supabase
       .from('profiles')
@@ -41,38 +38,77 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .single()
 
     if (error) throw error
-    setProfile(data as Profile)
+    return data as Profile
   }, [])
 
   useEffect(() => {
     let mounted = true
+    let requestNumber = 0
 
-    supabase.auth.getSession().then(async ({ data }) => {
+    const synchronizeSession = async (nextSession: Session | null) => {
+      const currentRequest = ++requestNumber
+
       if (!mounted) return
-      setSession(data.session)
-      try {
-        await loadProfile(data.session?.user.id)
-      } finally {
-        if (mounted) setLoading(false)
-      }
-    })
 
-    const { data: subscription } = supabase.auth.onAuthStateChange(
-      async (_event, nextSession) => {
-        setSession(nextSession)
-        try {
-          await loadProfile(nextSession?.user.id)
-        } finally {
+      setSession(nextSession)
+      setLoading(true)
+
+      try {
+        const nextProfile = await fetchProfile(nextSession?.user.id)
+
+        if (mounted && currentRequest == requestNumber) {
+          setProfile(nextProfile)
+        }
+      } catch (error) {
+        console.error('No fue posible cargar el perfil del usuario:', error)
+
+        if (mounted && currentRequest == requestNumber) {
+          setProfile(null)
+        }
+      } finally {
+        if (mounted && currentRequest == requestNumber) {
           setLoading(false)
         }
-      },
-    )
+      }
+    }
+
+    void supabase.auth.getSession().then(({ data, error }) => {
+      if (error) {
+        console.error('No fue posible recuperar la sesión:', error)
+        if (mounted) setLoading(false)
+        return
+      }
+
+      void synchronizeSession(data.session)
+    })
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!mounted) return
+
+      /*
+       * No se ejecutan consultas asíncronas de Supabase directamente
+       * dentro de onAuthStateChange. Se difieren al siguiente ciclo para
+       * evitar el bloqueo de supabase-js que podía dejar la pantalla vacía
+       * después de iniciar sesión.
+       */
+      setSession(nextSession)
+      setLoading(true)
+
+      window.setTimeout(() => {
+        if (mounted) {
+          void synchronizeSession(nextSession)
+        }
+      }, 0)
+    })
 
     return () => {
       mounted = false
-      subscription.subscription.unsubscribe()
+      requestNumber += 1
+      subscription.unsubscribe()
     }
-  }, [loadProfile])
+  }, [fetchProfile])
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
@@ -84,7 +120,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error
   }
 
-  const refreshProfile = async () => loadProfile(session?.user.id)
+  const refreshProfile = async () => {
+    const currentUserId = session?.user.id
+    if (!currentUserId) {
+      setProfile(null)
+      return
+    }
+
+    const nextProfile = await fetchProfile(currentUserId)
+    setProfile(nextProfile)
+  }
 
   const value = useMemo(
     () => ({

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Navigate } from 'react-router-dom'
 import type { z } from 'zod'
+import { Loader } from '../components/Loader'
 import { useAuth } from '../contexts/AuthContext'
 import { errorMessage } from '../lib/errors'
 import { loginSchema } from '../lib/validators'
@@ -11,7 +12,7 @@ import { loginSchema } from '../lib/validators'
 type LoginValues = z.infer<typeof loginSchema>
 
 export function LoginPage() {
-  const { session, signIn } = useAuth()
+  const { session, profile, loading, signIn } = useAuth()
   const [serverError, setServerError] = useState('')
   const {
     register,
@@ -19,7 +20,11 @@ export function LoginPage() {
     formState: { errors, isSubmitting },
   } = useForm<LoginValues>({ resolver: zodResolver(loginSchema) })
 
-  if (session) return <Navigate to="/" replace />
+  if (loading) return <Loader label="Verificando sesión…" />
+
+  // Solo se redirige cuando la sesión y el perfil activo están listos.
+  // Esto evita un ciclo /login ↔ / cuando el perfil todavía se está cargando.
+  if (session && profile?.active) return <Navigate to="/" replace />
 
   const submit = async (values: LoginValues) => {
     setServerError('')
