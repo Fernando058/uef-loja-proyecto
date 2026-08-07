@@ -130,6 +130,43 @@ export function StudentsPage() {
     await load()
   }
 
+  const loadEnrollmentDraft = async (student: Student, academicYearId: string) => {
+    if (!academicYearId) {
+      setEnrollment({
+        academic_year_id: '',
+        course_id: '',
+        enrolled_on: new Date().toISOString().slice(0, 10),
+        status: 'active',
+        withdrawn_on: '',
+        withdrawal_reason: '',
+      })
+      return
+    }
+
+    const { data, error } = await supabase
+      .from('enrollments')
+      .select('*')
+      .eq('student_id', student.id)
+      .eq('academic_year_id', academicYearId)
+      .maybeSingle()
+    if (error) throw error
+
+    setEnrollment({
+      academic_year_id: academicYearId,
+      course_id: data?.course_id ?? '',
+      enrolled_on: data?.enrolled_on ?? new Date().toISOString().slice(0, 10),
+      status: data?.status ?? 'active',
+      withdrawn_on: data?.withdrawn_on ?? '',
+      withdrawal_reason: data?.withdrawal_reason ?? '',
+    })
+  }
+
+  const openEnrollment = async (student: Student) => {
+    setEnrolling(student)
+    const year = years.find((item) => item.active) ?? years[0]
+    await loadEnrollmentDraft(student, year?.id ?? '')
+  }
+
   const saveEnrollment = async () => {
     if (!enrolling || !enrollment.academic_year_id || !enrollment.course_id) {
       setNotice('Seleccione el año lectivo y el curso.')
@@ -207,20 +244,9 @@ export function StudentsPage() {
                         </button>
                         <button
                           className="button button-secondary button-small"
-                          onClick={() => {
-                            setEnrolling(student)
-                            const year = years.find((item) => item.active)
-                            setEnrollment({
-                              academic_year_id: year?.id ?? '',
-                              course_id: '',
-                              enrolled_on: new Date().toISOString().slice(0, 10),
-                              status: 'active',
-                              withdrawn_on: '',
-                              withdrawal_reason: '',
-                            })
-                          }}
+                          onClick={() => void openEnrollment(student).catch((error) => setNotice(errorMessage(error)))}
                         >
-                          <UserRoundPlus size={15} /> Matricular
+                          <UserRoundPlus size={15} /> Matrícula
                         </button>
                         <ConfirmButton
                           label={student.active ? 'Desactivar' : 'Activar'}
@@ -272,13 +298,18 @@ export function StudentsPage() {
         </form>
       </Modal>
 
-      <Modal open={Boolean(enrolling)} title={`Matricular a ${enrolling ? fullName(enrolling.first_names, enrolling.last_names) : ''}`} onClose={() => setEnrolling(null)}>
+      <Modal open={Boolean(enrolling)} title={`Matrícula de ${enrolling ? fullName(enrolling.first_names, enrolling.last_names) : ''}`} onClose={() => setEnrolling(null)}>
         <div className="form-grid">
           <label className="field full-span">
             <span>Año lectivo</span>
             <select
               value={enrollment.academic_year_id}
-              onChange={(event) => setEnrollment({ ...enrollment, academic_year_id: event.target.value, course_id: '' })}
+              onChange={(event) => {
+                const nextYearId = event.target.value
+                if (enrolling) {
+                  void loadEnrollmentDraft(enrolling, nextYearId).catch((error) => setNotice(errorMessage(error)))
+                }
+              }}
             >
               <option value="">Seleccione</option>
               {years.map((year) => <option key={year.id} value={year.id}>{year.name}</option>)}

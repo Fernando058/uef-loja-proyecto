@@ -185,7 +185,7 @@ export function ReportsPage() {
   return (
     <>
       <PageHeader
-        title="Reportes y analítica"
+        title="Analítica académica"
         description="Genere resultados trimestrales y anuales, identifique tendencias y estudiantes que necesitan refuerzo."
         actions={<button className="button button-light" onClick={printReport}><Download size={17} /> Imprimir / PDF</button>}
       />

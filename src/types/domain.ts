@@ -170,3 +170,36 @@ export interface AnnualSubjectResult {
   learning_scale: string | null
   terms_completed: number
 }
+
+export interface QualitativeArea {
+  id: string
+  name: string
+  short_name: string | null
+  sort_order: number
+  active: boolean
+}
+
+export interface QualitativeRecord {
+  id?: string
+  area_id: string
+  enrollment_id: string
+  term_id: string
+  letter: 'A+' | 'A-' | 'B+' | 'B-' | 'C+' | 'C-' | 'D+' | 'D-' | 'E+' | 'E-'
+  notes?: string | null
+}
+
+export interface BehaviorCatalogItem {
+  letter: 'A' | 'B' | 'C' | 'D' | 'E'
+  description: string
+  active: boolean
+}
+
+export interface AttendanceSummary {
+  id?: string
+  enrollment_id: string
+  term_id: string
+  attended_days: number
+  justified_absences: number
+  unjustified_absences: number
+  notes?: string | null
+}
