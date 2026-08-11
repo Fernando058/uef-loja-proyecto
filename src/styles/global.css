@@ -443,3 +443,76 @@ thead .sticky-col { z-index: 4; background: #f2f6f8; }
   text-align: center;
   padding: 1rem;
 }
+
+
+/* ==========================================================
+   FASE 4.2 · CUALITATIVAS, COMPORTAMIENTO, ASISTENCIA Y BOLETAS
+   ========================================================== */
+
+.complementary-table {
+  min-width: 1050px;
+}
+
+.complementary-table th:not(:first-child),
+.complementary-table td:not(:first-child) {
+  text-align: center;
+}
+
+.complementary-table th small {
+  display: block;
+  max-width: 220px;
+  margin: .2rem auto 0;
+  color: var(--muted);
+  font-size: .66rem;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.behavior-select-wide {
+  width: min(100%, 430px);
+  min-width: 300px;
+  border: 1px solid #cfd9e0;
+  border-radius: 7px;
+  padding: .48rem .55rem;
+  background: white;
+}
+
+.behavior-select-wide:disabled {
+  background: #f2f5f7;
+  color: #667580;
+}
+
+.report-card-logo {
+  width: 66px;
+  height: 66px;
+  object-fit: contain;
+  margin: 0 auto .45rem;
+}
+
+.report-card-sheet .qualitative-table td,
+.report-card-sheet .behavior-table td {
+  vertical-align: middle;
+}
+
+.report-card-sheet .behavior-table td {
+  font-size: .72rem;
+}
+
+@media print {
+  .report-card-logo {
+    width: 55px;
+    height: 55px;
+  }
+
+  .report-card-sheet {
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  .report-card-two-columns {
+    gap: 5mm;
+  }
+
+  .report-card-attendance {
+    max-width: none;
+  }
+}

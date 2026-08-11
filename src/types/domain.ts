@@ -279,3 +279,41 @@ export interface SupplementaryEligibility {
   exam_score: number | null
   exam_date: string | null
 }
+
+
+export type QualitativeLetter = 'A+' | 'A-' | 'B+' | 'B-' | 'C+' | 'C-' | 'D+' | 'D-' | 'E+' | 'E-'
+export type BehaviorCode = 'A' | 'B' | 'C' | 'D' | 'E'
+
+export interface QualitativeSubjectRecord {
+  id?: string
+  enrollment_id: string
+  term_id: string
+  subject_id: string
+  letter: QualitativeLetter
+  notes?: string | null
+}
+
+export interface BehaviorCatalogItem {
+  code: BehaviorCode
+  description: string
+  active: boolean
+  sort_order: number
+}
+
+export interface BehaviorRecord {
+  id?: string
+  enrollment_id: string
+  term_id: string
+  behavior_code: BehaviorCode
+  notes?: string | null
+}
+
+export interface AttendanceSummary {
+  id?: string
+  enrollment_id: string
+  term_id: string
+  attended_days: number
+  justified_absences: number
+  unjustified_absences: number
+  notes?: string | null
+}
