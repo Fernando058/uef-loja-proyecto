@@ -1,105 +1,100 @@
 import { RefreshCw, Save } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { PageHeader } from '../components/PageHeader'
+import { useAuth } from '../contexts/AuthContext'
 import { errorMessage } from '../lib/errors'
 import { formatScore, fullName } from '../lib/format'
 import { supabase } from '../lib/supabase'
-import type { AnnualSubjectResult, Enrollment, TeacherAssignment } from '../types/domain'
+import type { AcademicYear, Course, Enrollment, Subject, SupplementaryEligibility } from '../types/domain'
 
 export function RecoveryPage() {
-  const [assignments, setAssignments] = useState<TeacherAssignment[]>([])
-  const [assignmentId, setAssignmentId] = useState('')
+  const { profile } = useAuth()
+  const canEdit = profile?.role === 'director'
+  const [years, setYears] = useState<AcademicYear[]>([])
+  const [courses, setCourses] = useState<Course[]>([])
+  const [subjects, setSubjects] = useState<Subject[]>([])
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
-  const [annual, setAnnual] = useState<Record<string, AnnualSubjectResult>>({})
+  const [eligibility, setEligibility] = useState<SupplementaryEligibility[]>([])
+  const [yearId, setYearId] = useState('')
+  const [courseId, setCourseId] = useState('')
   const [scores, setScores] = useState<Record<string, string>>({})
+  const [dates, setDates] = useState<Record<string, string>>({})
   const [notice, setNotice] = useState('')
   const [saving, setSaving] = useState(false)
-  const selected = assignments.find((item) => item.id === assignmentId)
 
-  const loadAssignments = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('teacher_assignments')
-      .select('*,course:courses(*),subject:subjects(*),teacher:teachers(*)')
-      .eq('active', true)
-    if (error) throw error
-    const rows = (data ?? []) as TeacherAssignment[]
-    setAssignments(rows)
-    if (!assignmentId && rows[0]) setAssignmentId(rows[0].id)
-  }, [assignmentId])
+  const loadBase = useCallback(async () => {
+    const [yearRes, courseRes, subjectRes] = await Promise.all([
+      supabase.from('academic_years').select('*').order('start_date', { ascending: false }),
+      supabase.from('courses').select('*,grade_level:grade_levels(*)').eq('active', true),
+      supabase.from('subjects').select('*').eq('kind', 'quantitative').order('sort_order'),
+    ])
+    const firstError = [yearRes, courseRes, subjectRes].find((item) => item.error)?.error
+    if (firstError) throw firstError
+    const yearRows = (yearRes.data ?? []) as AcademicYear[]
+    setYears(yearRows)
+    setCourses((courseRes.data ?? []) as Course[])
+    setSubjects((subjectRes.data ?? []) as Subject[])
+    if (!yearId) setYearId(yearRows.find((item) => item.active)?.id ?? yearRows[0]?.id ?? '')
+  }, [yearId])
+
+  useEffect(() => { void loadBase().catch((error) => setNotice(errorMessage(error))) }, [loadBase])
 
   useEffect(() => {
-    void loadAssignments().catch((error) => setNotice(errorMessage(error)))
-  }, [loadAssignments])
+    const yearCourses = courses.filter((item) => item.academic_year_id === yearId && item.grade_level?.sublevel === 'media')
+    if (!yearCourses.some((item) => item.id === courseId)) setCourseId(yearCourses[0]?.id ?? '')
+  }, [courses, yearId, courseId])
 
   const load = useCallback(async () => {
-    if (!selected) return
-    const [enrollmentRes, annualRes, recoveryRes] = await Promise.all([
-      supabase
-        .from('enrollments')
-        .select('*,student:students(*)')
-        .eq('academic_year_id', selected.academic_year_id)
-        .eq('course_id', selected.course_id)
-        .neq('status', 'transferred'),
-      supabase.from('v_annual_subject_results').select('*').eq('teacher_assignment_id', selected.id),
-      supabase.from('recovery_records').select('*').eq('teacher_assignment_id', selected.id),
+    if (!yearId || !courseId) { setEligibility([]); setEnrollments([]); return }
+    const [eligibilityRes, enrollmentRes] = await Promise.all([
+      supabase.from('v_supplementary_eligibility').select('*').eq('academic_year_id', yearId).eq('course_id', courseId).eq('eligible', true),
+      supabase.from('enrollments').select('*,student:students(*)').eq('academic_year_id', yearId).eq('course_id', courseId).in('status', ['active', 'completed']),
     ])
-    const firstError = [enrollmentRes, annualRes, recoveryRes].find((item) => item.error)?.error
-    if (firstError) throw firstError
-    const enrollmentRows = ((enrollmentRes.data ?? []) as Enrollment[]).sort((a, b) => fullName(a.student?.first_names, a.student?.last_names).localeCompare(fullName(b.student?.first_names, b.student?.last_names), 'es'))
-    setEnrollments(enrollmentRows)
-    setAnnual(Object.fromEntries(((annualRes.data ?? []) as AnnualSubjectResult[]).map((item) => [item.enrollment_id, item])))
-    setScores(Object.fromEntries((recoveryRes.data ?? []).map((item: any) => [item.enrollment_id, String(item.score)])))
-  }, [selected])
+    if (eligibilityRes.error) throw eligibilityRes.error
+    if (enrollmentRes.error) throw enrollmentRes.error
+    const rows = (eligibilityRes.data ?? []) as SupplementaryEligibility[]
+    setEligibility(rows)
+    setEnrollments((enrollmentRes.data ?? []) as Enrollment[])
+    setScores(Object.fromEntries(rows.map((item) => [`${item.enrollment_id}:${item.subject_id}`, item.exam_score == null ? '' : String(item.exam_score)])))
+    setDates(Object.fromEntries(rows.map((item) => [`${item.enrollment_id}:${item.subject_id}`, item.exam_date ?? ''])))
+  }, [yearId, courseId])
 
-  useEffect(() => {
-    void load().catch((error) => setNotice(errorMessage(error)))
-  }, [load])
+  useEffect(() => { void load().catch((error) => setNotice(errorMessage(error))) }, [load])
+
+  const rows = useMemo(() => eligibility.map((item) => ({
+    ...item,
+    student: enrollments.find((enrollment) => enrollment.id === item.enrollment_id)?.student,
+    subject: subjects.find((subject) => subject.id === item.subject_id),
+  })).sort((a, b) => fullName(a.student?.first_names, a.student?.last_names).localeCompare(fullName(b.student?.first_names, b.student?.last_names), 'es') || (a.subject?.name ?? '').localeCompare(b.subject?.name ?? '', 'es')), [eligibility, enrollments, subjects])
 
   const save = async () => {
-    if (!selected) return
-    const payload = Object.entries(scores)
-      .filter(([, value]) => value.trim() !== '')
-      .map(([enrollment_id, value]) => ({
-        enrollment_id,
-        teacher_assignment_id: selected.id,
-        score: Math.min(10, Math.max(0, Number(value))),
-      }))
+    if (!profile || !canEdit) return
     setSaving(true)
     try {
-      if (payload.length) {
-        const { error } = await supabase.from('recovery_records').upsert(payload, { onConflict: 'enrollment_id,teacher_assignment_id' })
+      for (const row of rows) {
+        const key = `${row.enrollment_id}:${row.subject_id}`
+        const value = scores[key] ?? ''
+        if (!value.trim()) continue
+        const score = Number(value)
+        if (!Number.isFinite(score) || score < 1 || score > 10) throw new Error('La nota supletoria debe estar entre 1,00 y 10,00.')
+        const { error } = await supabase.from('supplementary_exams').upsert({ enrollment_id: row.enrollment_id, subject_id: row.subject_id, exam_score: score, exam_date: dates[key] || null, updated_by: profile.id }, { onConflict: 'enrollment_id,subject_id' })
         if (error) throw error
       }
-      setNotice('Notas de recuperación guardadas.')
+      setNotice('Evaluaciones supletorias guardadas. La nota final de promoción se resolverá en la fase normativa de promoción.')
       await load()
-    } finally {
-      setSaving(false)
-    }
+    } finally { setSaving(false) }
   }
 
-  return (
-    <>
-      <PageHeader
-        title="Recuperación anual"
-        description="Registre la nota de recuperación como un valor independiente. La nota final se calcula promediando el resultado anual y la recuperación cuando esta exista."
-        actions={<div className="button-row"><button className="button button-light" onClick={() => void load().catch((error) => setNotice(errorMessage(error)))}><RefreshCw size={17} /> Actualizar</button><button className="button button-primary" disabled={saving} onClick={() => void save().catch((error) => setNotice(errorMessage(error)))}><Save size={17} /> {saving ? 'Guardando…' : 'Guardar'}</button></div>}
-      />
-      {notice && <div className="alert alert-info">{notice}</div>}
-      <section className="panel filters-panel">
-        <label className="field"><span>Curso y materia</span><select value={assignmentId} onChange={(event) => setAssignmentId(event.target.value)}><option value="">Seleccione</option>{assignments.map((item) => <option key={item.id} value={item.id}>{item.course?.grade_level} “{item.course?.parallel}” · {item.subject?.name}</option>)}</select></label>
-      </section>
-      <section className="panel">
-        <div className="table-wrap"><table><thead><tr><th>Estudiante</th><th>T1</th><th>T2</th><th>T3</th><th>Promedio anual</th><th>Recuperación</th><th>Nota final</th><th>Resultado</th></tr></thead><tbody>
-          {enrollments.map((enrollment) => {
-            const result = annual[enrollment.id]
-            const recoveryValue = scores[enrollment.id] ?? ''
-            const annualScore = result?.annual_average
-            const previewFinal = recoveryValue === '' ? annualScore : annualScore == null ? Number(recoveryValue) : (Number(annualScore) + Number(recoveryValue)) / 2
-            return <tr key={enrollment.id}><td><strong>{fullName(enrollment.student?.first_names, enrollment.student?.last_names)}</strong></td><td>{formatScore(result?.term_1)}</td><td>{formatScore(result?.term_2)}</td><td>{formatScore(result?.term_3)}</td><td>{formatScore(annualScore)}</td><td><input className="score-input" type="number" min="0" max="10" step="0.01" value={recoveryValue} onChange={(event) => setScores({ ...scores, [enrollment.id]: event.target.value })} /></td><td><strong>{formatScore(previewFinal)}</strong></td><td>{result?.learning_scale || '—'}</td></tr>
-          })}
-          {!enrollments.length && <tr><td colSpan={8} className="empty-cell">No existen estudiantes para esta asignación.</td></tr>}
-        </tbody></table></div>
-      </section>
-    </>
-  )
+  const yearCourses = courses.filter((item) => item.academic_year_id === yearId && item.grade_level?.sublevel === 'media')
+
+  return <>
+    <PageHeader title="Evaluación supletoria" description="El sistema habilita automáticamente asignaturas de EGB Media con promedio anual entre 4,01 y 6,99." actions={<div className="button-row"><button className="button button-light" onClick={() => void load().catch((error) => setNotice(errorMessage(error)))}><RefreshCw size={17} /> Actualizar</button>{canEdit && <button className="button button-primary" disabled={saving} onClick={() => void save().catch((error) => setNotice(errorMessage(error)))}><Save size={17} /> {saving ? 'Guardando…' : 'Guardar'}</button>}</div>} />
+    {notice && <div className="alert alert-info">{notice}</div>}
+    <div className="alert alert-warning">Esta pantalla registra el examen supletorio, pero todavía no decide promoción/repitencia ni sustituye automáticamente la nota final.</div>
+    <section className="panel filters-panel"><div className="filter-grid"><label className="field"><span>Año lectivo</span><select value={yearId} onChange={(event) => setYearId(event.target.value)}>{years.map((year) => <option key={year.id} value={year.id}>{year.name}</option>)}</select></label><label className="field"><span>Curso de EGB Media</span><select value={courseId} onChange={(event) => setCourseId(event.target.value)}><option value="">Seleccione</option>{yearCourses.map((course) => <option key={course.id} value={course.id}>{course.grade_level?.name} “{course.parallel}”</option>)}</select></label></div></section>
+    <section className="panel"><div className="table-wrap"><table><thead><tr><th>Estudiante</th><th>Asignatura</th><th>Promedio anual</th><th>Rango</th><th>Nota supletoria</th><th>Fecha</th></tr></thead><tbody>
+      {rows.map((row) => { const key = `${row.enrollment_id}:${row.subject_id}`; return <tr key={key}><td><strong>{fullName(row.student?.first_names, row.student?.last_names)}</strong></td><td>{row.subject?.name ?? '—'}</td><td>{formatScore(row.annual_score)}</td><td><span className="badge badge-warning">4,01–6,99</span></td><td><input className="score-input" type="number" min="1" max="10" step="0.01" disabled={!canEdit} value={scores[key] ?? ''} onChange={(event) => setScores({ ...scores, [key]: event.target.value })} /></td><td><input className="date-input-compact" type="date" disabled={!canEdit} value={dates[key] ?? ''} onChange={(event) => setDates({ ...dates, [key]: event.target.value })} /></td></tr> })}
+      {!rows.length && <tr><td colSpan={6} className="empty-cell">No existen estudiantes habilitados para supletorio en el curso seleccionado.</td></tr>}
+    </tbody></table></div></section>
+  </>
 }

@@ -2,8 +2,7 @@ import {
   BarChart3,
   BookOpenCheck,
   Building2,
-  ClipboardCheck,
-  FileText,
+  FolderKanban,
   GraduationCap,
   LayoutDashboard,
   LogOut,
@@ -25,13 +24,12 @@ const baseLinks = [
   { to: '/estudiantes', label: 'Estudiantes', icon: GraduationCap },
   { to: '/docentes', label: 'Docentes', icon: Users },
   { to: '/calificaciones', label: 'Calificaciones', icon: BookOpenCheck },
-  { to: '/recuperacion', label: 'Recuperación', icon: RotateCcw },
+  { to: '/proyectos', label: 'Proyecto interdisciplinar', icon: FolderKanban },
+  { to: '/supletorio', label: 'Supletorio', icon: RotateCcw },
 ]
 
 const reportLinks = [
   { to: '/reportes/analitica', label: 'Analítica académica', icon: BarChart3 },
-  { to: '/reportes/boletas', label: 'Boletas individuales', icon: FileText },
-  { to: '/reportes/asistencia', label: 'Asistencia resumida', icon: ClipboardCheck },
 ]
 
 const directorLinks = [
@@ -61,7 +59,7 @@ export function AppShell() {
       <aside className={`sidebar ${open ? 'sidebar-open' : ''}`}>
         <div className="brand-block">
           <div className="brand-mark"><Building2 size={26} /></div>
-          <div><strong>UEF Loja</strong><span>Gestión Académica</span></div>
+          <div><strong>UEF Loja</strong><span>Gestión Académica V2</span></div>
           <button className="sidebar-close" onClick={() => setOpen(false)} aria-label="Cerrar menú"><X size={20} /></button>
         </div>
 
@@ -77,12 +75,12 @@ export function AppShell() {
 
         <div className="sidebar-footer">
           <div className="user-chip"><ShieldCheck size={18} /><div><strong>{fullName(profile?.first_names, profile?.last_names) || profile?.email}</strong><span>{profile?.role === 'director' ? 'Director' : 'Docente'}</span></div></div>
-          <button className="nav-link signout" onClick={() => signOut()}><LogOut size={19} /><span>Cerrar sesión</span></button>
+          <button className="nav-link signout" onClick={() => void signOut()}><LogOut size={19} /><span>Cerrar sesión</span></button>
         </div>
       </aside>
 
       <div className="app-main">
-        <header className="mobile-topbar"><button className="icon-button" onClick={() => setOpen(true)} aria-label="Abrir menú"><Menu size={23} /></button><div><strong>UEF Loja</strong><span>Gestión Académica</span></div></header>
+        <header className="mobile-topbar"><button className="icon-button" onClick={() => setOpen(true)} aria-label="Abrir menú"><Menu size={23} /></button><div><strong>UEF Loja</strong><span>Gestión Académica V2</span></div></header>
         <main className="content-area"><Outlet /></main>
       </div>
       {open && <button className="sidebar-overlay" onClick={() => setOpen(false)} aria-label="Cerrar menú" />}

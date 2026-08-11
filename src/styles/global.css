@@ -353,3 +353,81 @@ thead .sticky-col { z-index: 4; background: #f2f6f8; }
   .report-card-meta { font-size: 9pt; }
   .report-card-section { break-inside: avoid; }
 }
+
+/* ==========================================================
+   FASE 4 · FRONTEND V2
+   ========================================================== */
+.normative-banner {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  margin: -0.2rem 0 1rem;
+  padding: .8rem 1rem;
+  border: 1px solid #c9dce5;
+  border-left: 4px solid var(--blue);
+  border-radius: 10px;
+  background: #f4f9fb;
+  color: var(--navy);
+}
+.normative-banner span { color: var(--muted); font-size: .85rem; }
+.assessment-head-button {
+  border: 0;
+  background: transparent;
+  width: 100%;
+  padding: 0;
+  color: inherit;
+  display: grid;
+  justify-items: center;
+  gap: .15rem;
+  cursor: pointer;
+}
+.sum-code { color: #8a5c08; }
+.score-cell-stack { display: grid; justify-items: center; gap: .3rem; }
+.mini-action {
+  border: 0;
+  background: #eef5f8;
+  color: var(--navy);
+  border-radius: 6px;
+  padding: .2rem .35rem;
+  font-size: .67rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: .2rem;
+  cursor: pointer;
+}
+.mini-action:disabled { opacity: .45; cursor: not-allowed; }
+.improvement-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .65rem 1rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: .75rem .9rem;
+  border-radius: 10px;
+  background: #f3f7f9;
+  color: var(--navy);
+}
+.project-admin-actions { margin-bottom: 1rem; }
+.project-subject-chips { display: flex; flex-wrap: wrap; gap: .55rem; }
+.subject-chip {
+  border: 1px solid #cad7df;
+  background: #fff;
+  color: var(--navy);
+  border-radius: 999px;
+  padding: .5rem .75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.subject-chip.active { background: var(--navy); border-color: var(--navy); color: white; }
+.empty-inline { color: var(--muted); font-size: .85rem; }
+.project-grade-table { min-width: 1200px; }
+.date-input-compact { border: 1px solid #cfd9e0; border-radius: 6px; padding: .4rem; }
+.v2-gradebook { min-width: 1350px; }
+.panel-heading h2 svg { vertical-align: middle; margin-right: .35rem; }
+
+@media (max-width: 720px) {
+  .normative-banner { flex-direction: column; align-items: flex-start; }
+  .project-admin-actions .button { width: 100%; }
+}
