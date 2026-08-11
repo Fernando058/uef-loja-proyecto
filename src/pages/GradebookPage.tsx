@@ -195,13 +195,12 @@ export function GradebookPage() {
 
       // Resultados calculados. Si esta vista falla, el libro sigue mostrando
       // matrículas/evaluaciones/notas y comunica el error concreto.
-      const resultRes = await supabase
-        .from('v_subject_term_results')
-        .select('*')
-        .eq('academic_year_id', selectedAssignment.academic_year_id)
-        .eq('course_id', selectedAssignment.course_id)
-        .eq('subject_id', selectedAssignment.subject_id)
-        .eq('term_id', termId)
+      const resultRes = await supabase.rpc('get_subject_term_results_v2', {
+        p_course_id: selectedAssignment.course_id,
+        p_term_id: termId,
+        p_subject_id: selectedAssignment.subject_id,
+        p_enrollment_id: null,
+      })
 
       if (resultRes.error) {
         setResults({})
