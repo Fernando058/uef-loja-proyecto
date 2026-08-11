@@ -516,3 +516,100 @@ thead .sticky-col { z-index: 4; background: #f2f6f8; }
     max-width: none;
   }
 }
+
+
+/* ==========================================================
+   PARCHE DE DISEÑO · ANALÍTICA ACADÉMICA
+   ========================================================== */
+
+.chart-box-tall {
+  min-height: 310px;
+}
+
+.subject-guide {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: .55rem .9rem;
+  margin-top: .9rem;
+  padding-top: .9rem;
+  border-top: 1px solid #e3eaf0;
+}
+
+.subject-guide-item {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  font-size: .85rem;
+  color: #334155;
+}
+
+.subject-guide-item strong {
+  min-width: 40px;
+  color: #12385c;
+}
+
+.subject-guide-dot,
+.performance-summary-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  flex: 0 0 12px;
+}
+
+.performance-summary {
+  display: grid;
+  gap: .65rem;
+  margin-top: .9rem;
+  padding-top: .9rem;
+  border-top: 1px solid #e3eaf0;
+}
+
+.performance-summary-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: .75rem;
+  align-items: center;
+  padding: .55rem .7rem;
+  border: 1px solid #e3eaf0;
+  border-radius: 10px;
+  background: #fbfdff;
+}
+
+.performance-summary-text {
+  display: flex;
+  flex-direction: column;
+  gap: .1rem;
+}
+
+.performance-summary-text strong {
+  color: #153554;
+  font-size: .92rem;
+}
+
+.performance-summary-text small {
+  color: #64748b;
+  font-size: .76rem;
+  line-height: 1.25;
+}
+
+.performance-summary-stats {
+  text-align: right;
+}
+
+.performance-summary-stats strong {
+  display: block;
+  color: #153554;
+  font-size: 1rem;
+}
+
+.performance-summary-stats span {
+  color: #64748b;
+  font-size: .78rem;
+}
+
+@media print {
+  .subject-guide,
+  .performance-summary {
+    break-inside: avoid;
+  }
+}
