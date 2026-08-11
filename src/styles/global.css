@@ -613,3 +613,197 @@ thead .sticky-col { z-index: 4; background: #f2f6f8; }
     break-inside: avoid;
   }
 }
+
+
+/* ==========================================================
+   ANALÍTICA V2.1 · GLOBAL, POR MATERIA Y SEMAFORIZACIÓN
+   ========================================================== */
+
+.subject-performance-panel {
+  overflow: hidden;
+}
+
+.subject-performance-heading {
+  align-items: end;
+  gap: 1rem;
+}
+
+.subject-performance-selector {
+  min-width: min(100%, 330px);
+}
+
+.subject-performance-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, .9fr) minmax(340px, 1.1fr);
+  gap: 1.2rem;
+  align-items: stretch;
+}
+
+.subject-performance-summary {
+  display: grid;
+  gap: .65rem;
+  align-content: start;
+}
+
+.subject-performance-title {
+  padding: .9rem 1rem;
+  border: 1px solid #dce7ef;
+  border-radius: 12px;
+  background: #f7fbfe;
+}
+
+.subject-performance-title span,
+.subject-performance-title small {
+  display: block;
+  color: #64748b;
+}
+
+.subject-performance-title strong {
+  display: block;
+  margin: .18rem 0;
+  color: #12385c;
+  font-size: 1.08rem;
+}
+
+.reinforcement-callout {
+  display: flex;
+  flex-direction: column;
+  gap: .18rem;
+  margin-top: .15rem;
+  padding: .85rem 1rem;
+  border: 1px solid #efc4c4;
+  border-left: 5px solid #b84b4b;
+  border-radius: 10px;
+  background: #fff7f7;
+}
+
+.reinforcement-callout strong {
+  color: #9f3030;
+}
+
+.reinforcement-callout span {
+  color: #6b4a4a;
+  font-size: .83rem;
+}
+
+.analytics-color-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem 1rem;
+  padding: 0 1rem .9rem;
+}
+
+.analytics-color-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: .38rem;
+  color: #475569;
+  font-size: .8rem;
+  font-weight: 600;
+}
+
+.analytics-color-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.analytics-student-row td {
+  transition: background .15s ease;
+}
+
+.analytics-student-name {
+  border-left: 5px solid transparent;
+}
+
+.analytics-student-row.analytics-excellent .analytics-student-name {
+  border-left-color: #2e7d5b;
+  background: #f4fbf7;
+}
+
+.analytics-student-row.analytics-good .analytics-student-name {
+  border-left-color: #d2a62a;
+  background: #fffaf0;
+}
+
+.analytics-student-row.analytics-reinforcement .analytics-student-name {
+  border-left-color: #b84b4b;
+  background: #fff6f6;
+}
+
+.analytics-score-cell,
+.analytics-average-cell {
+  text-align: center;
+}
+
+.analytics-score-pill,
+.analytics-band-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 52px;
+  padding: .28rem .48rem;
+  border-radius: 999px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.analytics-band-badge {
+  min-width: 120px;
+  padding: .36rem .65rem;
+  font-size: .76rem;
+}
+
+.analytics-score-pill.analytics-excellent,
+.analytics-band-badge.analytics-excellent {
+  color: #1e674a;
+  background: #dff3e9;
+  border: 1px solid #b8e0ca;
+}
+
+.analytics-score-pill.analytics-good,
+.analytics-band-badge.analytics-good {
+  color: #8a680d;
+  background: #fff2c9;
+  border: 1px solid #eed98a;
+}
+
+.analytics-score-pill.analytics-reinforcement,
+.analytics-band-badge.analytics-reinforcement {
+  color: #9c3636;
+  background: #fde2e2;
+  border: 1px solid #efbbbb;
+}
+
+.analytics-score-pill.analytics-empty,
+.analytics-band-badge.analytics-empty {
+  color: #64748b;
+  background: #eef2f6;
+  border: 1px solid #dce3ea;
+}
+
+.analytics-average-cell strong {
+  color: #153554;
+}
+
+@media (max-width: 980px) {
+  .subject-performance-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .subject-performance-selector {
+    min-width: 100%;
+  }
+}
+
+@media print {
+  .subject-performance-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .analytics-band-badge,
+  .analytics-score-pill {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}

@@ -35,17 +35,24 @@ const PIE_META = [
 ]
 
 const BAR_COLORS = [
-  '#2f6f9f',
-  '#3d82b8',
-  '#5d93c6',
-  '#7ea4d0',
-  '#4f86a5',
-  '#6b9db6',
-  '#3d6f8f',
+  '#2563eb',
+  '#0f766e',
+  '#7c3aed',
+  '#d97706',
+  '#0891b2',
+  '#4f46e5',
+  '#65a30d',
 ]
 
 const pieLabel = ({ name, value }: { name?: string; value?: number }) =>
   value ? `${name}: ${value}` : ''
+
+const bandClass = (band: string) => {
+  if (band === 'Excelente') return 'analytics-excellent'
+  if (band === 'Bueno') return 'analytics-good'
+  if (band === 'Necesita refuerzo') return 'analytics-reinforcement'
+  return 'analytics-empty'
+}
 
 export function ReportsPage() {
   const [tab, setTab] = useState<Tab>('individual')
@@ -58,6 +65,7 @@ export function ReportsPage() {
   const [courseId, setCourseId] = useState('')
   const [termId, setTermId] = useState('')
   const [enrollmentId, setEnrollmentId] = useState('')
+  const [selectedSubjectId, setSelectedSubjectId] = useState('')
   const [termResults, setTermResults] = useState<TermSubjectResult[]>([])
   const [annualResults, setAnnualResults] = useState<AnnualSubjectResult[]>([])
   const [notice, setNotice] = useState('')
@@ -175,6 +183,17 @@ export function ReportsPage() {
     [subjects],
   )
 
+  useEffect(() => {
+    if (!subjects.length) {
+      setSelectedSubjectId('')
+      return
+    }
+
+    if (!subjects.some((subject) => subject.id === selectedSubjectId)) {
+      setSelectedSubjectId(subjects[0].id)
+    }
+  }, [subjects, selectedSubjectId])
+
   const individualData = annualResults
     .filter((item) => item.annual_score != null)
     .map((item) => ({
@@ -211,32 +230,70 @@ export function ReportsPage() {
   }, [termResults, subjects, subjectGuide])
 
   const allCourseScores = termResults.filter((item) => item.term_score != null)
-  const bandCounts = allCourseScores.reduce((acc, row) => {
+
+  // Distribución global: cada resultado alumno-asignatura cuenta una vez.
+  const globalBandCounts = allCourseScores.reduce((acc, row) => {
     const band = scoreBand(Number(row.term_score))
     acc[band] = (acc[band] ?? 0) + 1
     return acc
   }, {} as Record<string, number>)
 
-  const pieData = PIE_META
+  const globalPieData = PIE_META
     .map((item) => ({
       ...item,
-      value: bandCounts[item.name] ?? 0,
+      value: globalBandCounts[item.name] ?? 0,
     }))
     .filter((item) => item.value > 0)
 
-  const totalPie = pieData.reduce((sum, item) => sum + item.value, 0)
+  const totalGlobalResults = globalPieData.reduce((sum, item) => sum + item.value, 0)
+
+  // Distribución por materia: máximo un resultado por estudiante.
+  const selectedSubject = subjects.find((subject) => subject.id === selectedSubjectId)
+  const selectedSubjectResults = termResults.filter(
+    (item) => item.subject_id === selectedSubjectId && item.term_score != null,
+  )
+
+  const subjectBandCounts = selectedSubjectResults.reduce((acc, row) => {
+    const band = scoreBand(Number(row.term_score))
+    acc[band] = (acc[band] ?? 0) + 1
+    return acc
+  }, {} as Record<string, number>)
+
+  const subjectPieData = PIE_META
+    .map((item) => ({
+      ...item,
+      value: subjectBandCounts[item.name] ?? 0,
+    }))
+    .filter((item) => item.value > 0)
+
+  const totalSubjectStudents = subjectPieData.reduce((sum, item) => sum + item.value, 0)
 
   const tableRows = useMemo(
     () =>
-      enrollments.map((enrollment) => ({
-        enrollment,
-        scores: Object.fromEntries(
+      enrollments.map((enrollment) => {
+        const scores = Object.fromEntries(
           termResults
             .filter((row) => row.enrollment_id === enrollment.id)
             .map((row) => [row.subject_id, row.term_score]),
-        ),
-      })),
-    [enrollments, termResults],
+        ) as Record<string, number | null>
+
+        const validScores = subjects
+          .map((subject) => scores[subject.id])
+          .filter((value): value is number => value != null)
+          .map(Number)
+
+        const average = validScores.length
+          ? validScores.reduce((sum, value) => sum + value, 0) / validScores.length
+          : null
+
+        return {
+          enrollment,
+          scores,
+          average,
+          band: scoreBand(average),
+        }
+      }),
+    [enrollments, termResults, subjects],
   )
 
   return (
@@ -470,8 +527,11 @@ export function ReportsPage() {
             <article className="panel chart-panel">
               <div className="panel-heading">
                 <div>
-                  <h2>Distribución de desempeño</h2>
-                  <p>Clasificación por cantidad de resultados del curso.</p>
+                  <h2>Distribución global de resultados</h2>
+                  <p>
+                    {enrollments.length} estudiantes × {subjects.length} asignaturas =
+                    {' '}{totalGlobalResults} resultados evaluados.
+                  </p>
                 </div>
               </div>
 
@@ -480,22 +540,22 @@ export function ReportsPage() {
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
                       <Pie
-                        data={pieData}
+                        data={globalPieData}
                         dataKey="value"
                         nameKey="name"
                         outerRadius={100}
                         label={pieLabel}
                         labelLine
                       >
-                        {pieData.map((entry) => (
+                        {globalPieData.map((entry) => (
                           <Cell key={entry.name} fill={entry.color} />
                         ))}
                       </Pie>
                       <Tooltip
                         formatter={(value, _name, props) => {
                           const numericValue = Number(value ?? 0)
-                          const percent = totalPie
-                            ? ((numericValue / totalPie) * 100).toFixed(1)
+                          const percent = totalGlobalResults
+                            ? ((numericValue / totalGlobalResults) * 100).toFixed(1)
                             : '0.0'
                           const label =
                             props?.payload && typeof props.payload === 'object' && 'name' in props.payload
@@ -513,8 +573,10 @@ export function ReportsPage() {
 
               <div className="performance-summary">
                 {PIE_META.map((item) => {
-                  const count = bandCounts[item.name] ?? 0
-                  const percent = totalPie ? Math.round((count / totalPie) * 100) : 0
+                  const count = globalBandCounts[item.name] ?? 0
+                  const percent = totalGlobalResults
+                    ? Math.round((count / totalGlobalResults) * 100)
+                    : 0
                   return (
                     <div key={item.name} className="performance-summary-item">
                       <span
@@ -526,7 +588,7 @@ export function ReportsPage() {
                         <small>{item.description}</small>
                       </div>
                       <div className="performance-summary-stats">
-                        <strong>{count}</strong>
+                        <strong>{count} resultados</strong>
                         <span>{percent}%</span>
                       </div>
                     </div>
@@ -536,7 +598,134 @@ export function ReportsPage() {
             </article>
           </section>
 
-          <section className="panel">
+          <section className="panel subject-performance-panel">
+            <div className="panel-heading subject-performance-heading">
+              <div>
+                <h2>Desempeño por asignatura</h2>
+                <p>
+                  Aquí cada estudiante cuenta una sola vez. El total no puede superar
+                  los {enrollments.length} estudiantes del curso.
+                </p>
+              </div>
+
+              <label className="field subject-performance-selector print-hide">
+                <span>Asignatura</span>
+                <select
+                  value={selectedSubjectId}
+                  onChange={(event) => setSelectedSubjectId(event.target.value)}
+                >
+                  {subjects.map((subject) => (
+                    <option key={subject.id} value={subject.id}>
+                      {subject.abbreviation} — {subject.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="subject-performance-grid">
+              <div className="chart-box chart-box-tall">
+                {totalSubjectStudents ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={subjectPieData}
+                        dataKey="value"
+                        nameKey="name"
+                        outerRadius={105}
+                        label={pieLabel}
+                        labelLine
+                      >
+                        {subjectPieData.map((entry) => (
+                          <Cell key={entry.name} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value, _name, props) => {
+                          const numericValue = Number(value ?? 0)
+                          const percent = totalSubjectStudents
+                            ? ((numericValue / totalSubjectStudents) * 100).toFixed(1)
+                            : '0.0'
+                          const label =
+                            props?.payload
+                            && typeof props.payload === 'object'
+                            && 'name' in props.payload
+                              ? String(props.payload.name)
+                              : 'Categoría'
+                          return [`${numericValue} estudiantes (${percent} %)`, label]
+                        }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="chart-empty">
+                    Sin resultados para {selectedSubject?.name ?? 'esta asignatura'}.
+                  </div>
+                )}
+              </div>
+
+              <div className="subject-performance-summary">
+                <div className="subject-performance-title">
+                  <span>Asignatura seleccionada</span>
+                  <strong>{selectedSubject?.name ?? '—'}</strong>
+                  <small>{totalSubjectStudents} estudiantes evaluados</small>
+                </div>
+
+                {PIE_META.map((item) => {
+                  const count = subjectBandCounts[item.name] ?? 0
+                  const percent = totalSubjectStudents
+                    ? Math.round((count / totalSubjectStudents) * 100)
+                    : 0
+
+                  return (
+                    <div key={item.name} className="performance-summary-item">
+                      <span
+                        className="performance-summary-dot"
+                        style={{ backgroundColor: item.color }}
+                      />
+                      <div className="performance-summary-text">
+                        <strong>{item.name}</strong>
+                        <small>{item.description}</small>
+                      </div>
+                      <div className="performance-summary-stats">
+                        <strong>{count} estudiantes</strong>
+                        <span>{percent}%</span>
+                      </div>
+                    </div>
+                  )
+                })}
+
+                <div className="reinforcement-callout">
+                  <strong>
+                    {subjectBandCounts['Necesita refuerzo'] ?? 0} estudiante(s)
+                    necesitan refuerzo
+                  </strong>
+                  <span>
+                    en {selectedSubject?.name ?? 'la asignatura seleccionada'}.
+                  </span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="panel analytics-student-panel">
+            <div className="panel-heading">
+              <div>
+                <h2>Detalle por estudiante</h2>
+                <p>
+                  El color de cada nota identifica su nivel; el promedio clasifica
+                  el desempeño global del estudiante en el trimestre.
+                </p>
+              </div>
+            </div>
+            <div className="analytics-color-legend">
+              {PIE_META.map((item) => (
+                <span key={item.name}>
+                  <i style={{ backgroundColor: item.color }} />
+                  {item.name}
+                </span>
+              ))}
+            </div>
             <div className="table-wrap">
               <table>
                 <thead>
@@ -545,24 +734,45 @@ export function ReportsPage() {
                     {subjects.map((subject) => (
                       <th key={subject.id}>{subject.abbreviation}</th>
                     ))}
+                    <th>Promedio</th>
+                    <th>Nivel</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {tableRows.map(({ enrollment, scores }) => (
-                    <tr key={enrollment.id}>
-                      <td>
+                  {tableRows.map(({ enrollment, scores, average, band }) => (
+                    <tr key={enrollment.id} className={`analytics-student-row ${bandClass(band)}`}>
+                      <td className="analytics-student-name">
                         <strong>
                           {fullName(enrollment.student?.first_names, enrollment.student?.last_names)}
                         </strong>
                       </td>
-                      {subjects.map((subject) => (
-                        <td key={subject.id}>{formatScore(scores[subject.id])}</td>
-                      ))}
+
+                      {subjects.map((subject) => {
+                        const score = scores[subject.id]
+                        const cellBand = score == null ? 'Sin datos' : scoreBand(Number(score))
+
+                        return (
+                          <td key={subject.id} className="analytics-score-cell">
+                            <span className={`analytics-score-pill ${bandClass(cellBand)}`}>
+                              {formatScore(score)}
+                            </span>
+                          </td>
+                        )
+                      })}
+
+                      <td className="analytics-average-cell">
+                        <strong>{formatScore(average)}</strong>
+                      </td>
+                      <td>
+                        <span className={`analytics-band-badge ${bandClass(band)}`}>
+                          {band}
+                        </span>
+                      </td>
                     </tr>
                   ))}
                   {!tableRows.length && (
                     <tr>
-                      <td colSpan={subjects.length + 1} className="empty-cell">
+                      <td colSpan={subjects.length + 3} className="empty-cell">
                         No existen resultados en este curso.
                       </td>
                     </tr>
