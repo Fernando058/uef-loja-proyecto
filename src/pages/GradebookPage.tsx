@@ -41,6 +41,20 @@ const parseScore = (value: string) => {
   return number
 }
 
+const databaseErrorText = (error: unknown, context: string) => {
+  if (error && typeof error === 'object') {
+    const candidate = error as { message?: string; details?: string; hint?: string; code?: string }
+    const parts = [
+      candidate.message,
+      candidate.details,
+      candidate.hint,
+      candidate.code ? `Código ${candidate.code}` : '',
+    ].filter(Boolean)
+    if (parts.length) return `${context}: ${parts.join(' · ')}`
+  }
+  return `${context}: ${errorMessage(error)}`
+}
+
 export function GradebookPage() {
   const { profile } = useAuth()
   const [assignments, setAssignments] = useState<TeacherAssignment[]>([])
@@ -106,37 +120,118 @@ export function GradebookPage() {
   const loadGradebook = useCallback(async () => {
     if (!selectedAssignment || !termId) return
     setLoading(true)
-    try {
-      const [enrollmentRes, assessmentRes, resultRes] = await Promise.all([
-        supabase.from('enrollments').select('*,student:students(*)').eq('academic_year_id', selectedAssignment.academic_year_id).eq('course_id', selectedAssignment.course_id).in('status', ['active', 'completed']),
-        supabase.from('assessments').select('*,activity_type:assessment_activity_types(*)').eq('teacher_assignment_id', selectedAssignment.id).eq('term_id', termId).order('assessment_date').order('created_at'),
-        supabase.from('v_subject_term_results').select('*').eq('course_id', selectedAssignment.course_id).eq('subject_id', selectedAssignment.subject_id).eq('term_id', termId),
-      ])
-      const firstError = [enrollmentRes, assessmentRes, resultRes].find((item) => item.error)?.error
-      if (firstError) throw firstError
+    setNotice('')
 
-      const enrollmentRows = ((enrollmentRes.data ?? []) as Enrollment[]).sort((a, b) => fullName(a.student?.first_names, a.student?.last_names).localeCompare(fullName(b.student?.first_names, b.student?.last_names), 'es'))
+    try {
+      // Matrículas y evaluaciones son los datos indispensables para dibujar
+      // el libro. Se cargan primero; una falla en la vista de resultados no
+      // debe ocultar estudiantes ni notas ya existentes.
+      const [enrollmentRes, assessmentRes] = await Promise.all([
+        supabase
+          .from('enrollments')
+          .select('*,student:students(*)')
+          .eq('academic_year_id', selectedAssignment.academic_year_id)
+          .eq('course_id', selectedAssignment.course_id)
+          .in('status', ['active', 'completed']),
+        supabase
+          .from('assessments')
+          .select('*,activity_type:assessment_activity_types(*)')
+          .eq('academic_year_id', selectedAssignment.academic_year_id)
+          .eq('course_id', selectedAssignment.course_id)
+          .eq('subject_id', selectedAssignment.subject_id)
+          .eq('term_id', termId)
+          .order('assessment_date')
+          .order('created_at'),
+      ])
+
+      if (enrollmentRes.error) {
+        throw new Error(databaseErrorText(enrollmentRes.error, 'Error cargando matrículas'))
+      }
+      if (assessmentRes.error) {
+        throw new Error(databaseErrorText(assessmentRes.error, 'Error cargando evaluaciones'))
+      }
+
+      const enrollmentRows = ((enrollmentRes.data ?? []) as Enrollment[]).sort((a, b) =>
+        fullName(a.student?.first_names, a.student?.last_names)
+          .localeCompare(fullName(b.student?.first_names, b.student?.last_names), 'es'),
+      )
       const assessmentRows = (assessmentRes.data ?? []) as Assessment[]
+
       setEnrollments(enrollmentRows)
       setAssessments(assessmentRows)
-      setResults(Object.fromEntries(((resultRes.data ?? []) as TermSubjectResult[]).map((item) => [item.enrollment_id, item])))
 
+      // Cargar las notas aun si la vista calculada presentara un problema.
       const ids = assessmentRows.map((item) => item.id)
       let rows: AssessmentGrade[] = []
+
       if (ids.length) {
-        const { data, error } = await supabase.from('assessment_grades').select('*').in('assessment_id', ids)
-        if (error) throw error
-        rows = (data ?? []) as AssessmentGrade[]
+        const gradeRes = await supabase
+          .from('assessment_grades')
+          .select('*')
+          .in('assessment_id', ids)
+
+        if (gradeRes.error) {
+          throw new Error(databaseErrorText(gradeRes.error, 'Error cargando calificaciones'))
+        }
+
+        rows = (gradeRes.data ?? []) as AssessmentGrade[]
       }
+
       setGradeRows(rows)
+
       const map: Record<string, string> = {}
       for (const enrollment of enrollmentRows) {
         for (const assessment of assessmentRows) {
-          const current = rows.find((grade) => grade.enrollment_id === enrollment.id && grade.assessment_id === assessment.id)
-          map[`${enrollment.id}:${assessment.id}`] = current?.initial_score == null ? '' : String(current.initial_score)
+          const current = rows.find(
+            (grade) =>
+              grade.enrollment_id === enrollment.id
+              && grade.assessment_id === assessment.id,
+          )
+          map[`${enrollment.id}:${assessment.id}`] =
+            current?.initial_score == null ? '' : String(current.initial_score)
         }
       }
       setScores(map)
+
+      // Resultados calculados. Si esta vista falla, el libro sigue mostrando
+      // matrículas/evaluaciones/notas y comunica el error concreto.
+      const resultRes = await supabase
+        .from('v_subject_term_results')
+        .select('*')
+        .eq('academic_year_id', selectedAssignment.academic_year_id)
+        .eq('course_id', selectedAssignment.course_id)
+        .eq('subject_id', selectedAssignment.subject_id)
+        .eq('term_id', termId)
+
+      if (resultRes.error) {
+        setResults({})
+        setNotice(
+          databaseErrorText(
+            resultRes.error,
+            `Se cargaron ${enrollmentRows.length} estudiante(s) y ${assessmentRows.length} evaluación(es), pero falló el cálculo de promedios`,
+          ),
+        )
+      } else {
+        setResults(
+          Object.fromEntries(
+            ((resultRes.data ?? []) as TermSubjectResult[])
+              .map((item) => [item.enrollment_id, item]),
+          ),
+        )
+
+        if (!enrollmentRows.length) {
+          setNotice(
+            'No hay matrículas activas/completadas para este curso y año lectivo. '
+            + 'Revise la carga de datos o ejecute la consulta diagnóstica del dataset de prueba.',
+          )
+        } else if (!assessmentRows.length) {
+          setNotice(
+            `${enrollmentRows.length} estudiante(s) cargados, pero no existen evaluaciones para esta asignatura y trimestre.`,
+          )
+        }
+      }
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : databaseErrorText(error, 'Libro de calificaciones'))
     } finally {
       setLoading(false)
     }
