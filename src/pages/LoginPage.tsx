@@ -40,7 +40,7 @@ export function LoginPage() {
       <section className="login-hero">
         <div className="login-hero-content">
           <div className="hero-icon"><School size={38} /></div>
-          <p className="eyebrow">Unidad Educativa Fiscal Loja</p>
+          <p className="eyebrow">Unidad Educativa Fiscal Ejemplo</p>
           <h1>Evaluación académica con información clara y oportuna.</h1>
           <p>
             Registro de calificaciones, seguimiento trimestral, reportes anuales y analítica de rendimiento en una sola plataforma.

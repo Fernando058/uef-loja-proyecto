@@ -512,7 +512,7 @@ export function ReportCardsPage() {
               alt="Logotipo institucional"
             />
           )}
-          <p>{institution?.institution_name ?? 'Unidad Educativa Fiscal Loja'}</p>
+          <p>{institution?.institution_name ?? 'Unidad Educativa Fiscal Ejemplo'}</p>
           <h1>
             {cardType === 'annual'
               ? 'BOLETA ANUAL DE CALIFICACIONES'

@@ -1,0 +1,22 @@
+PARCHE v1.0.3 - UEF Ejemplo
+
+Aplicar únicamente sobre un clon limpio del repositorio:
+https://github.com/Fernando058/uef-loja-proyecto
+
+Incluye solamente:
+- Cambio visual UEF Loja -> UEF Ejemplo.
+- Cambio de nombre completo a Unidad Educativa Fiscal Ejemplo.
+- Correcciones de lint en AuthContext, ProjectsPage y ReportsPage.
+- Título del workflow de GitHub Pages actualizado.
+- Versión npm 1.0.3.
+
+NO incluye:
+- vite.config.ts (el repositorio correcto ya tiene /uef-loja-proyecto/).
+- supabase/config.toml.
+- migraciones SQL.
+- datos de Supabase.
+- .env.local.
+- node_modules.
+- dist.
+
+Si el SQL de rebranding ya fue ejecutado en Supabase, no debe repetirse para aplicar este parche.

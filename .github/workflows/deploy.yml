@@ -1,4 +1,4 @@
-name: Deploy UEF Loja to GitHub Pages
+name: Deploy UEF Ejemplo to GitHub Pages
 
 on:
   push:

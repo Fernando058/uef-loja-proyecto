@@ -168,9 +168,15 @@ export function ReportsPage() {
 
   const yearCourses = courses.filter((item) => item.academic_year_id === yearId)
   const selectedStudent = enrollments.find((item) => item.id === enrollmentId)?.student
-  const subjectName = (id: string) => subjects.find((item) => item.id === id)?.name ?? 'Asignatura'
-  const subjectAbbreviation = (id: string) =>
-    subjects.find((item) => item.id === id)?.abbreviation ?? 'ASIG'
+  const subjectName = useCallback(
+    (id: string) => subjects.find((item) => item.id === id)?.name ?? 'Asignatura',
+    [subjects],
+  )
+
+  const subjectAbbreviation = useCallback(
+    (id: string) => subjects.find((item) => item.id === id)?.abbreviation ?? 'ASIG',
+    [subjects],
+  )
 
   const subjectGuide = useMemo(
     () =>
@@ -227,7 +233,7 @@ export function ReportsPage() {
           ?? BAR_COLORS[0],
       }))
       .sort((a, b) => a.subject.localeCompare(b.subject, 'es'))
-  }, [termResults, subjects, subjectGuide])
+  }, [termResults, subjectGuide, subjectName, subjectAbbreviation])
 
   const allCourseScores = termResults.filter((item) => item.term_score != null)
 

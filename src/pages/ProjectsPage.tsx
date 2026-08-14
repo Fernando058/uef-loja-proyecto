@@ -1,5 +1,5 @@
 import { FolderKanban, Plus, RefreshCw, Save } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Modal } from '../components/Modal'
 import { PageHeader } from '../components/PageHeader'
 import { useAuth } from '../contexts/AuthContext'
@@ -64,8 +64,6 @@ export function ProjectsPage() {
   const [selectedProjectSubjectId, setSelectedProjectSubjectId] = useState('')
   const [indicators, setIndicators] = useState<ProjectIndicator[]>([])
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
-  const [indicatorScores, setIndicatorScores] = useState<ProjectIndicatorScore[]>([])
-  const [components, setComponents] = useState<ProjectStudentComponent[]>([])
   const [projectScores, setProjectScores] = useState<ProjectSubjectScore[]>([])
   const [scoreDrafts, setScoreDrafts] = useState<Record<string, string>>({})
   const [componentDrafts, setComponentDrafts] = useState<Record<string, { product: string; presentation: string }>>({})
@@ -79,7 +77,6 @@ export function ProjectsPage() {
   const [indicatorOpen, setIndicatorOpen] = useState(false)
   const [indicatorDraft, setIndicatorDraft] = useState<IndicatorDraft>(emptyIndicator)
 
-  const selectedCourse = courses.find((item) => item.id === courseId)
   const selectedProject = projects.find((item) => item.id === projectId)
   const selectedProjectSubject = projectSubjects.find((item) => item.id === selectedProjectSubjectId)
   const canManageSelectedSubject = Boolean(isDirector || (profile && selectedProjectSubject?.teacher_assignment?.teacher?.profile_id === profile.id))
@@ -132,7 +129,7 @@ export function ProjectsPage() {
 
   const loadProjectDetail = useCallback(async () => {
     if (!projectId || !selectedProject) {
-      setProjectSubjects([]); setIndicators([]); setEnrollments([]); setIndicatorScores([]); setComponents([]); setProjectScores([]); return
+      setProjectSubjects([]); setIndicators([]); setEnrollments([]); setProjectScores([]); return
     }
     const [subjectRes, indicatorRes, enrollmentRes, componentRes, scoreViewRes] = await Promise.all([
       supabase.from('project_subjects').select('*,subject:subjects(*),teacher_assignment:teacher_assignments(*,teacher:teachers(*))').eq('project_id', projectId).eq('active', true),
@@ -149,7 +146,6 @@ export function ProjectsPage() {
     setProjectSubjects(subjectRows)
     setIndicators(indicatorRows)
     setEnrollments(enrollmentRows)
-    setComponents((componentRes.data ?? []) as ProjectStudentComponent[])
     setProjectScores((scoreViewRes.data ?? []) as ProjectSubjectScore[])
     if (!subjectRows.some((item) => item.id === selectedProjectSubjectId)) setSelectedProjectSubjectId(subjectRows[0]?.id ?? '')
 
@@ -160,7 +156,6 @@ export function ProjectsPage() {
       if (error) throw error
       indicatorScoreRows = (data ?? []) as ProjectIndicatorScore[]
     }
-    setIndicatorScores(indicatorScoreRows)
 
     const scoreMap: Record<string, string> = {}
     for (const enrollment of enrollmentRows) {

@@ -70,7 +70,7 @@ export function AppShell() {
       <aside className={`sidebar ${open ? 'sidebar-open' : ''}`}>
         <div className="brand-block">
           <div className="brand-mark"><Building2 size={26} /></div>
-          <div><strong>UEF Loja</strong><span>Gestión Académica V2</span></div>
+          <div><strong>UEF Ejemplo</strong><span>Gestión Académica V2</span></div>
           <button
             className="sidebar-close"
             onClick={() => setOpen(false)}
@@ -120,7 +120,7 @@ export function AppShell() {
           >
             <Menu size={23} />
           </button>
-          <div><strong>UEF Loja</strong><span>Gestión Académica V2</span></div>
+          <div><strong>UEF Ejemplo</strong><span>Gestión Académica V2</span></div>
         </header>
 
         <main className="content-area"><Outlet /></main>

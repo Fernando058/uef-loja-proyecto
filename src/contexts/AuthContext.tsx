@@ -120,7 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error
   }
 
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     const currentUserId = session?.user.id
     if (!currentUserId) {
       setProfile(null)
@@ -129,7 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const nextProfile = await fetchProfile(currentUserId)
     setProfile(nextProfile)
-  }
+  }, [fetchProfile, session?.user.id])
 
   const value = useMemo(
     () => ({
@@ -141,12 +141,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       refreshProfile,
     }),
-    [session, profile, loading],
+    [session, profile, loading, refreshProfile],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext)
   if (!context) throw new Error('useAuth debe usarse dentro de AuthProvider')
