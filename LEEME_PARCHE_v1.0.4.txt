@@ -1,0 +1,17 @@
+PARCHE v1.0.4 - Sidebar fijo con scroll propio
+
+Objetivo:
+- La columna azul lateral permanece fija en pantalla.
+- El contenido principal puede desplazarse sin mover el sidebar.
+- Si el menú lateral supera la altura disponible, solamente la zona de navegación
+  obtiene scroll vertical propio.
+- La cabecera UEF Ejemplo y el bloque de usuario/cerrar sesión permanecen visibles.
+- Se evita scroll horizontal dentro del sidebar.
+- Se conserva el comportamiento móvil actual: el sidebar se abre/cierra con el botón menú.
+
+Archivos:
+- src/styles/global.css
+- package.json
+- package-lock.json
+
+No modifica Supabase, SQL, RLS, autenticación ni datos.
